@@ -18,4 +18,3 @@ def pascal_triangle(n):
                 C = C * (i - j) // j
             res.append(level)
     return res
-
