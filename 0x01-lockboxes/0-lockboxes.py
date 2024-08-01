@@ -30,4 +30,3 @@ def canUnlockAll(boxes):
         if i not in opened_boxes and i != 0:
             return False
     return True
-
