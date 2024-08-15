@@ -1,64 +1,50 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
+"""
+log parsing
+"""
+
 import sys
-import signal
 import re
 
-# Regular expression to match the input format
-r = r'(\d{1,3}(?:\.\d{1,3}){3}) - \[(.*?)\] "GET /projects/260 HTTP/1\.1" ' \
-    r'(\d{3}) (\d+)'
-log_pattern = re.compile(r)
 
-# Initialize metrics
-total_size = 0
-status_codes_count = {200: 0, 301: 0, 400: 0, 401: 0,
-                      403: 0, 404: 0, 405: 0, 500: 0}
-line_count = 0
-
-
-def print_statistics():
-    """Function to print the statistics."""
-    print(f"File size: {total_size}")
-    for code in sorted(status_codes_count):
-        if status_codes_count[code] > 0:
-            print(f"{code}: {status_codes_count[code]}")
-
-
-def process_line(line):
-    """Process a single line of input."""
-    global total_size, line_count
-
-    match = log_pattern.match(line)
-    if match:
-        status_code = int(match.group(3))
-        file_size = int(match.group(4))
-
-        total_size += file_size
-
-        if status_code in status_codes_count:
-            status_codes_count[status_code] += 1
-
-        line_count += 1
-
-        if line_count % 10 == 0:
-            print_statistics()
-
-
-def signal_handler(sig, frame):
-    """Handle keyboard interruption (Ctrl + C)."""
-    print_statistics()
-    sys.exit(0)
-
-
-# Attach the signal handler for Ctrl+C
-signal.signal(signal.SIGINT, signal_handler)
+def output(log: dict) -> None:
+    """
+    helper function to display stats
+    """
+    print("File size: {}".format(log["file_size"]))
+    for code in sorted(log["code_frequency"]):
+        if log["code_frequency"][code]:
+            print("{}: {}".format(code, log["code_frequency"][code]))
 
 
 if __name__ == "__main__":
+    regex = re.compile(
+    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (.{3}) (\d+)')  # nopep8
+
+    line_count = 0
+    log = {}
+    log["file_size"] = 0
+    log["code_frequency"] = {
+        str(code): 0 for code in [
+            200, 301, 400, 401, 403, 404, 405, 500]}
+
     try:
         for line in sys.stdin:
-            process_line(line.strip())
-    except KeyboardInterrupt:
-        print_statistics()
-        sys.exit(0)
+            line = line.strip()
+            match = regex.fullmatch(line)
+            if (match):
+                line_count += 1
+                code = match.group(1)
+                file_size = int(match.group(2))
 
-    print_statistics()
+                # File size
+                log["file_size"] += file_size
+
+                # status code
+                if (code.isdecimal()):
+                    log["code_frequency"][code] += 1
+
+                if (line_count % 10 == 0):
+                    output(log)
+    finally:
+        output(log)
